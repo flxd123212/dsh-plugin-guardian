@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="auto">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>插件医生</title>
+<style>
+  /* Tokens lifted from @deepseek-ai/dsh-client-ui-theme so this page looks like
+     the DSH settings surface instead of a foreign web app. */
+  :root {
+    color-scheme: light;
+    --g-bg: #ffffff;
+    --g-layer: #ffffff;
+    --g-layer-2: #f4f5f7;
+    --g-border-1: rgba(0, 0, 0, 0.04);
+    --g-border-2: rgba(0, 0, 0, 0.10);
+    --g-border-3: rgba(0, 0, 0, 0.12);
+    --g-text-1: #0f1115;
+    --g-text-2: #61666b;
+    --g-text-3: #81858c;
+    --g-contrast: #0f1115;
+    --g-contrast-hover: #43454a;
+    --g-on-contrast: #ffffff;
+    --g-hover: rgba(15, 17, 21, 0.05);
+    --g-ok: #22c55e;
+    --g-warn: #dd8629;
+    --g-bad: #ec1313;
+    --g-ok-bg: rgba(34, 197, 94, 0.10);
+    --g-warn-bg: rgba(221, 134, 41, 0.12);
+    --g-bad-bg: rgba(236, 19, 19, 0.09);
+    --g-radius-sm: 6px;
+    --g-radius: 8px;
+    --g-radius-lg: 12px;
+  }
+  html[data-theme="dark"] {
+    color-scheme: dark;
+    --g-bg: #151517;
+    --g-layer: #232324;
+    --g-layer-2: #2c2c2e;
+    --g-border-1: rgba(255, 255, 255, 0.06);
+    --g-border-2: rgba(255, 255, 255, 0.12);
+    --g-border-3: rgba(255, 255, 255, 0.16);
+    --g-text-1: #f9fafb;
+    --g-text-2: #cfd3d6;
+    --g-text-3: #adb2b8;
+    --g-contrast: #f9fafb;
+    --g-contrast-hover: #ebeef2;
+    --g-on-contrast: #0f1115;
+    --g-hover: rgba(255, 255, 255, 0.06);
+    --g-ok: #22c55e;
+    --g-warn: #f7ad31;
+    --g-bad: #f25a5a;
+    --g-ok-bg: rgba(34, 197, 94, 0.14);
+    --g-warn-bg: rgba(247, 173, 49, 0.14);
+    --g-bad-bg: rgba(242, 90, 90, 0.14);
+  }
+  @media (prefers-color-scheme: dark) {
+    html[data-theme="auto"] {
+      color-scheme: dark;
+      --g-bg: #151517; --g-layer: #232324; --g-layer-2: #2c2c2e;
+      --g-border-1: rgba(255,255,255,.06); --g-border-2: rgba(255,255,255,.12); --g-border-3: rgba(255,255,255,.16);
+      --g-text-1: #f9fafb; --g-text-2: #cfd3d6; --g-text-3: #adb2b8;
+      --g-contrast: #f9fafb; --g-contrast-hover: #ebeef2; --g-on-contrast: #0f1115;
+      --g-hover: rgba(255,255,255,.06);
+      --g-bad: #f25a5a; --g-warn: #f7ad31;
+      --g-bad-bg: rgba(242,90,90,.14); --g-warn-bg: rgba(247,173,49,.14);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--g-bg);
+    color: var(--g-text-1);
+    font-family: var(--dsw-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  header {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 24px 12px;
+    background: var(--g-bg);
+    border-bottom: 1px solid var(--g-border-1);
+  }
+  header h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: .2px; }
+  header .meta { color: var(--g-text-3); font-size: 12px; }
+  header .spacer { flex: 1; }
+  main { max-width: 1080px; padding: 16px 24px 48px; }
+
+  .tabs { display: flex; gap: 4px; margin: 4px 0 14px; border-bottom: 1px solid var(--g-border-1); }
+  .tab {
+    border: 0; background: none; color: var(--g-text-2); cursor: pointer;
+    padding: 7px 10px 9px; font-size: 13px; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--g-text-1); }
+  .tab.active { color: var(--g-text-1); border-bottom-color: var(--g-text-1); font-weight: 500; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .hint { color: var(--g-text-3); font-size: 12px; }
+
+  button.btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    border: 1px solid var(--g-border-2); background: transparent; color: var(--g-text-1);
+    border-radius: var(--g-radius); padding: 5px 11px; font-size: 12.5px; line-height: 20px;
+    cursor: pointer; font-family: inherit; transition: background .12s ease, border-color .12s ease;
+  }
+  button.btn:hover { background: var(--g-hover); }
+  button.btn.primary { background: var(--g-contrast); color: var(--g-on-contrast); border-color: transparent; font-weight: 500; }
+  button.btn.primary:hover { background: var(--g-contrast-hover); }
+  button.btn:disabled { opacity: .45; cursor: default; }
+  button.btn.ghost { border-color: transparent; color: var(--g-text-2); }
+  button.btn.ghost:hover { color: var(--g-text-1); }
+
+  .table { border: 1px solid var(--g-border-1); border-radius: var(--g-radius-lg); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left; font-weight: 500; font-size: 11.5px; color: var(--g-text-3);
+    padding: 9px 14px; background: var(--g-layer-2); border-bottom: 1px solid var(--g-border-1);
+  }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid var(--g-border-1); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: var(--g-hover); }
+  td.name { font-family: var(--ds-font-family-code, "SF Mono", "JetBrains Mono", Consolas, "Liberation Mono", Menlo, monospace); font-size: 12px; }
+  td.version { color: var(--g-text-2); font-variant-numeric: tabular-nums; }
+  td.actions { text-align: right; white-space: nowrap; }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 0 7px; border-radius: 999px; font-size: 11px; line-height: 18px;
+    border: 1px solid var(--g-border-2); color: var(--g-text-2); white-space: nowrap;
+  }
+  .chip + .chip { margin-left: 4px; }
+  .chip.ok { color: var(--g-ok); border-color: transparent; background: var(--g-ok-bg); }
+  .chip.bad { color: var(--g-bad); border-color: transparent; background: var(--g-bad-bg); }
+  .chip.warn { color: var(--g-warn); border-color: transparent; background: var(--g-warn-bg); }
+  .chip.muted { color: var(--g-text-3); }
+
+  textarea {
+    width: 100%; min-height: 84px; resize: vertical;
+    background: var(--g-layer); color: var(--g-text-1);
+    border: 1px solid var(--g-border-2); border-radius: var(--g-radius-lg);
+    padding: 10px 12px; font: inherit; font-size: 13px; line-height: 1.6;
+  }
+  html[data-theme="dark"] textarea, html[data-theme="auto"] textarea { background: var(--g-layer); }
+  textarea::placeholder { color: var(--g-text-3); }
+  textarea:focus { outline: none; border-color: var(--g-text-3); }
+
+  .result {
+    border: 1px solid var(--g-border-1); border-radius: var(--g-radius-lg);
+    padding: 12px 14px; margin-bottom: 8px; background: var(--g-layer);
+  }
+  .result:hover { border-color: var(--g-border-2); }
+  .result .head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .result h3 { margin: 0; font-size: 13px; font-weight: 600; font-family: var(--ds-font-family-code, Consolas, monospace); }
+  .result .ver { color: var(--g-text-3); font-size: 11.5px; }
+  .result .desc { margin: 4px 0 10px; color: var(--g-text-2); font-size: 12.5px; }
+  .result .why { margin: -4px 0 10px; color: var(--g-bad); font-size: 11.5px; }
+  .result .foot { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .result .foot .spacer { flex: 1; }
+
+  .empty { color: var(--g-text-3); padding: 28px 4px; text-align: center; font-size: 12.5px; }
+  #toast {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+    max-width: min(720px, calc(100vw - 48px)); white-space: pre-wrap;
+    background: var(--g-layer-2); color: var(--g-text-1);
+    border: 1px solid var(--g-border-2); border-radius: var(--g-radius);
+    padding: 9px 14px; font-size: 12px; line-height: 1.6; display: none;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>插件医生</h1>
+  <span class="meta" id="meta">正在读取…</span>
+  <span class="spacer"></span>
+  <button class="btn ghost" id="theme" title="切换浅色 / 深色">◐</button>
+  <button class="btn primary" id="check">检查更新</button>
+</header>
+<main>
+  <div class="tabs">
+    <button class="tab active" data-tab="health">体检与更新</button>
+    <button class="tab" data-tab="find">按需求找插件</button>
+  </div>
+
+  <section class="panel active" id="panel-health">
+    <div class="bar">
+      <span class="hint" id="health-hint"></span>
+      <span class="spacer" style="flex:1"></span>
+      <button class="btn ghost" id="reload">重新体检</button>
+    </div>
+    <div class="table">
+      <table>
+        <thead>
+          <tr><th>插件</th><th>已装</th><th>最新</th><th>状态</th><th></th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-find">
+    <p class="hint">描述你要的功能，我去社区目录、npm 和 GitHub 里找匹配的插件，并标出当前 dsh 版本能不能用。</p>
+    <textarea id="query" placeholder="比如：自动写周报、网页预览、换主题皮肤、定时任务…"></textarea>
+    <div class="bar" style="margin-top:10px">
+      <button class="btn primary" id="search">搜索并匹配</button>
+      <span class="hint" id="find-hint"></span>
+    </div>
+    <div id="results"></div>
+  </section>
+</main>
+<div id="toast"></div>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const toastNode = $('toast');
+  let state = null;
+  let toastTimer = null;
+
+  function toast(message) {
+    toastNode.style.display = 'block';
+    toastNode.textContent = String(message).slice(0, 3000);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toastNode.style.display = 'none'; }, 9000);
+  }
+
+  // ---- theme: follow the OS by default, remember an explicit choice ----
+  const themeParam = new URLSearchParams(location.search).get('theme');
+  const saved = localStorage.getItem('guardian-theme');
+  if (themeParam === 'light' || themeParam === 'dark') document.documentElement.dataset.theme = themeParam;
+  else if (saved === 'light' || saved === 'dark') document.documentElement.dataset.theme = saved;
+  $('theme').addEventListener('click', () => {
+    const dark = document.documentElement.dataset.theme === 'dark'
+      || (document.documentElement.dataset.theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+    const next = dark ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem('guardian-theme', next);
+  });
+
+  async function api(route, body) {
+    const response = await fetch('/guardian/api' + route, {
+      method: body === undefined ? 'GET' : 'POST',
+      headers: { 'content-type': 'application/json' },
+      credentials: 'same-origin',
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const data = await response.json().catch(() => ({ ok: false, error: 'bad json' }));
+    if (!response.ok || data.ok === false) throw new Error(data.error || ('HTTP ' + response.status));
+    return data;
+  }
+
+  const esc = (text) => String(text == null ? '' : text).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const chip = (text, cls) => `<span class="chip ${cls || ''}">${esc(text)}</span>`;
+
+  function renderMeta() {
+    if (!state) return;
+    const plugins = state.plugins || [];
+    const bundled = plugins.filter((p) => p.bundled).length;
+    const bad = plugins.filter((p) => p.compat === 'incompatible').length;
+    const updates = plugins.filter((p) => p.update === 'available').length;
+    $('meta').textContent = `dsh ${state.runtime} · ${state.profile} · ${plugins.length} 个插件 / ${bundled} 个启用`
+      + (bad ? ` · ${bad} 个不兼容` : '') + (updates ? ` · ${updates} 个可更新` : '');
+  }
+
+  function renderRows() {
+    const rows = (state.plugins || []).map((plugin) => {
+      const status = [];
+      status.push(plugin.compat === 'ok' ? chip('兼容', 'ok') : plugin.compat === 'missing' ? chip('未安装', 'warn') : chip('不兼容', 'bad'));
+      status.push(plugin.bundled ? chip('启用', 'muted') : chip('已停用', 'warn'));
+      if (plugin.update === 'available') status.push(chip('可更新', 'ok'));
+      if (plugin.update === 'blocked') status.push(chip('新版不兼容', 'bad'));
+
+      const actions = [];
+      if (plugin.update === 'available') actions.push(`<button class="btn" data-act="upgrade" data-name="${esc(plugin.name)}">升级</button>`);
+      if (plugin.bundled) actions.push(`<button class="btn ghost" data-act="suspend" data-name="${esc(plugin.name)}">停用</button>`);
+      else actions.push(`<button class="btn ghost" data-act="resume" data-name="${esc(plugin.name)}">启用</button>`);
+
+      return `<tr>
+        <td class="name">${esc(plugin.name)}</td>
+        <td class="version">${esc(plugin.installed || '—')}</td>
+        <td class="version">${esc(plugin.latest || '—')}</td>
+        <td>${status.join('')}</td>
+        <td class="actions">${actions.join(' ')}</td>
+      </tr>`;
+    });
+    $('rows').innerHTML = rows.join('') || '<tr><td colspan="5" class="empty">这个 profile 里还没有第三方插件</td></tr>';
+    $('health-hint').textContent = state.pendingSuspend && state.pendingSuspend.length
+      ? `下次启动会自动停用：${state.pendingSuspend.join('、')}`
+      : state.checkedAt
+        ? `上次检查：${new Date(state.checkedAt).toLocaleString()}`
+        : '还没有做过在线检查';
+  }
+
+  async function refresh() {
+    const data = await api('/state');
+    state = data.state;
+    renderMeta();
+    renderRows();
+  }
+
+  $('check').addEventListener('click', async () => {
+    $('check').disabled = true;
+    $('health-hint').textContent = '正在查询最新版本…（约 5–20 秒）';
+    try {
+      const data = await api('/check', {});
+      state = data.state;
+      renderMeta();
+      renderRows();
+      toast('检查完成');
+    } catch (error) {
+      toast('检查失败：' + error.message);
+    } finally {
+      $('check').disabled = false;
+    }
+  });
+
+  $('reload').addEventListener('click', () => refresh().catch((error) => toast(error.message)));
+
+  $('rows').addEventListener('click', async (event) => {
+    const button = event.target.closest('button[data-act]');
+    if (!button) return;
+    const act = button.dataset.act;
+    const name = button.dataset.name;
+    button.disabled = true;
+    toast(`${act} ${name} …`);
+    try {
+      const data = await api('/' + act, { name });
+      state = data.state;
+      renderMeta();
+      renderRows();
+      toast((act === 'upgrade' ? '升级' : act === 'suspend' ? '停用' : '启用') + ' ' + name + ' 完成，重启后生效');
+    } catch (error) {
+      toast(`${act} ${name} 失败：${error.message}`);
+      button.disabled = false;
+    }
+  });
+
+  function renderResults(results) {
+    if (!results.length) {
+      $('results').innerHTML = '<div class="empty">没找到匹配的插件，换个说法试试</div>';
+      return;
+    }
+    $('results').innerHTML = results.map((entry) => {
+      const flags = [];
+      if (entry.compatible === true) flags.push(chip('兼容', 'ok'));
+      if (entry.compatible === false) flags.push(chip('不兼容', 'bad'));
+      flags.push(chip(entry.installed ? '已安装' : (entry.source || 'npm'), entry.installed ? 'warn' : 'muted'));
+      const why = entry.compatible === false && entry.unmet
+        ? `<div class="why">需要：${esc(Object.entries(entry.unmet).map(([k, v]) => `${k} ${v}`).join('；'))}</div>`
+        : '';
+      const action = entry.installed
+        ? '<button class="btn" disabled>已安装</button>'
+        : `<button class="btn primary" data-install="${esc(entry.installSpec || entry.name)}">安装</button>`;
+      return `<div class="result">
+        <div class="head"><h3>${esc(entry.name)}</h3>${entry.version ? `<span class="ver">${esc(entry.version)}</span>` : ''}</div>
+        <p class="desc">${esc(entry.description || '（没有描述）')}</p>
+        ${why}
+        <div class="foot">${flags.join('')}<span class="spacer"></span>${action}</div>
+      </div>`;
+    }).join('');
+  }
+
+  $('search').addEventListener('click', async () => {
+    const query = $('query').value.trim();
+    if (!query) { $('find-hint').textContent = '先写一句你想要的功能'; return; }
+    $('search').disabled = true;
+    $('find-hint').textContent = '搜索中…';
+    $('results').innerHTML = '';
+    try {
+      const data = await api('/search', { query });
+      renderResults(data.results || []);
+      $('find-hint').textContent = `找到 ${(data.results || []).length} 个候选`;
+    } catch (error) {
+      toast('搜索失败：' + error.message);
+      $('find-hint').textContent = '搜索失败';
+    } finally {
+      $('search').disabled = false;
+    }
+  });
+
+  $('query').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) $('search').click();
+  });
+
+  $('results').addEventListener('click', async (event) => {
+    const button = event.target.closest('button[data-install]');
+    if (!button) return;
+    const spec = button.dataset.install;
+    button.disabled = true;
+    toast(`正在安装 ${spec} …（可能要一两分钟）`);
+    try {
+      const data = await api('/install', { spec });
+      if (data.ok) {
+        toast(`已安装 ${spec}，重启后生效`);
+        button.textContent = '已安装';
+        if (data.state) { state = data.state; renderMeta(); renderRows(); }
+      } else {
+        toast(`安装失败：${(data.result && data.result.output) || '未知错误'}`);
+        button.disabled = false;
+      }
+    } catch (error) {
+      toast('安装失败：' + error.message);
+      button.disabled = false;
+    }
+  });
+
+  document.querySelectorAll('.tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach((node) => node.classList.toggle('active', node === tab));
+      document.querySelectorAll('.panel').forEach((node) => node.classList.toggle('active', node.id === 'panel-' + tab.dataset.tab));
+    });
+  });
+
+  refresh().catch((error) => toast('读取状态失败：' + error.message));
+})();
+</script>
+</body>
+</html>

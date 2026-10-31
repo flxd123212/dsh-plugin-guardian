@@ -1,0 +1,58 @@
+{
+  "name": "dsh-plugin-guardian",
+  "version": "0.1.4",
+  "description": "Plugin doctor for the DeepSeek Harness: grades every installed plugin against the running dsh, finds compatible updates, suspends what cannot run, and searches the community for plugins matching a described need.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "dsh-guardian": "bin/guardian.js"
+  },
+  "scripts": {
+    "test": "node test/doctor.test.mjs"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "docs",
+    "integrations",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek",
+    "deepseek-harness",
+    "plugin-manager",
+    "compatibility",
+    "repair"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": ">=0.2.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flxd123212/dsh-plugin-guardian.git"
+  }
+}

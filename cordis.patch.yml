@@ -1,0 +1,11 @@
+# dsh-plugin-guardian — one row over the active profile.
+#
+# Install:
+#   dsh plugin --profile <name> add dsh-plugin-guardian
+# then restart the profile (web has HMR off, so a restart applies it).
+#
+# The row carries no config: every knob lives in the panel (/guardian) or in
+# $DSH_HOME/guardian/state.json.
+- insert:
+    - id: plugin-guardian
+      name: 'dsh-plugin-guardian'
