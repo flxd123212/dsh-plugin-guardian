@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-guardian",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Plugin doctor for the DeepSeek Harness: grades every installed plugin against the running dsh, finds compatible updates, suspends what cannot run, and searches the community for plugins matching a described need.",
   "type": "module",
   "main": "lib/index.js",
@@ -20,6 +20,7 @@
     "lib",
     "docs",
     "integrations",
+    "test",
     "cordis.patch.yml",
     "README.md",
     "LICENSE"
